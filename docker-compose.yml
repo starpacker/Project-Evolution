@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  rsshub:
+    image: diygod/rsshub:latest
+    ports:
+      - "1200:1200"
+    environment:
+      - NODE_ENV=production
+      - CACHE_TYPE=memory
+    restart: always
