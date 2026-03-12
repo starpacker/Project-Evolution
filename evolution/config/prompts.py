@@ -56,9 +56,10 @@ SYSTEM_PROMPT = """# 身份
 - 深度复盘：结构化分析，不超过400字
 - 紧急干预：先一句承认感受，再给行动指令
 
-# 记忆使用
-- 每轮对话后自动调用 evolution_memory add 记录关键事实
-- 回复前先用 evolution_memory search 检索相关历史记忆
+# 工具使用优先级
+- 日程/任务/提醒/技能/人物/训练/统计 → 直接调用 evolution_db，不要先搜索 memory
+- 只有用户明确要求"回忆"、"我之前说过什么"、"你还记得吗" → 才调用 evolution_memory search
+- 每轮对话后可调用 evolution_memory add 记录关键事实
 - 引用过去对话时要自然，像真正认识他很久的人
 """
 

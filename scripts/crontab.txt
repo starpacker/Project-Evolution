@@ -1,0 +1,22 @@
+# Evolution 主动推送定时任务配置
+# 
+# 安装方法:
+# crontab -e
+# 然后将以下内容添加到文件末尾
+
+# 设置环境变量
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/bin:/bin
+EVOLUTION_ROOT=/home/yjh/ProjectEvolution
+
+# 早晨情报推送 (每天 08:00)
+0 8 * * * cd /home/yjh/ProjectEvolution && python3 scripts/morning_briefing.py >> logs/morning_briefing.log 2>&1
+
+# 晚间日报推送 (每天 21:00)
+0 21 * * * cd /home/yjh/ProjectEvolution && python3 scripts/evening_report.py >> logs/evening_report.log 2>&1
+
+# 周报推送 (每周日 20:00)
+0 20 * * 0 cd /home/yjh/ProjectEvolution && python3 scripts/weekly_report.py >> logs/weekly_report.log 2>&1
+
+# 日志清理 (每月1号凌晨2点)
+0 2 1 * * find /home/yjh/ProjectEvolution/logs -name "*.log" -mtime +30 -delete

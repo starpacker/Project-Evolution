@@ -9,6 +9,13 @@ from typing import Any, Dict, Optional
 
 from evolution.tools.base import BaseTool, ToolResult
 
+# Apply Mem0 compatibility patches before importing Mem0
+try:
+    from evolution.utils.mem0_patch import apply_all_patches
+    apply_all_patches()
+except Exception as e:
+    logging.warning(f"Could not apply Mem0 patches: {e}")
+
 logger = logging.getLogger("evolution.tools.memory")
 
 
@@ -128,14 +135,16 @@ class EvolutionMemoryTool(BaseTool):
         summary = f"找到 {len(output['results'])} 条相关记忆"
         if output["relations"]:
             summary += f"，{len(output['relations'])} 条关系"
+        
+        # 格式化为字符串输出（便于显示）
+        result_text = summary + "\n\n"
+        for i, mem in enumerate(output["results"][:5], 1):  # 只显示前5条
+            result_text += f"{i}. {mem['memory']}\n"
+        
+        if len(output["results"]) > 5:
+            result_text += f"\n... 还有 {len(output['results']) - 5} 条记忆"
 
-        return ToolResult.success(
-            {
-                "summary": summary,
-                "memories": output["results"],
-                "relations": output["relations"],
-            }
-        )
+        return ToolResult.success(result_text)
 
     def _add(self, params: dict) -> ToolResult:
         content = params.get("content", "")
@@ -171,12 +180,10 @@ class EvolutionMemoryTool(BaseTool):
             profile_lines.append(f"- {text}")
 
         profile = "\n".join(profile_lines) if profile_lines else "（暂无记忆档案）"
-        return ToolResult.success(
-            {
-                "total_memories": len(memories_list),
-                "profile": profile,
-            }
-        )
+        
+        result_text = f"📊 用户档案（共 {len(memories_list)} 条记忆）\n\n{profile}"
+        
+        return ToolResult.success(result_text)
 
 
 class MockMemory:

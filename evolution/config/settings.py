@@ -39,7 +39,7 @@ CLAUDE_MAX_TOKENS = LLM_MAX_TOKENS
 # Mem0 配置
 # ──────────────────────────────────────────────
 EMBEDDING_PROVIDER = os.environ.get("EMBEDDING_PROVIDER", "openai")
-EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "aliyun/text-embedding-v4")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 
 MEM0_CONFIG = {
@@ -59,12 +59,13 @@ MEM0_CONFIG = {
             "model": EMBEDDING_MODEL,
             "api_key": OPENAI_API_KEY or LLM_API_KEY,
             "openai_base_url": os.environ.get("EMBEDDING_BASE_URL", LLM_BASE_URL),
+            "embedding_dims": 1024,  # aliyun/text-embedding-v4 的维度
         },
     },
     "vector_store": {
         "provider": "qdrant",
         "config": {
-            "collection_name": "evolution_memories",
+            "collection_name": "evolution_memories_v2",  # 新collection名称
             "path": QDRANT_PATH,
         },
     },

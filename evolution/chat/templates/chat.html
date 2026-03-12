@@ -299,6 +299,7 @@
                     <option value="emotional">💑 情感助手</option>
                     <option value="intelligence">📡 情报收集者</option>
                 </select>
+                <button class="clear-button" onclick="window.open('/dashboard', '_blank')">📊 Dashboard</button>
                 <button class="clear-button" onclick="clearHistory()">清空对话</button>
             </div>
         </div>
@@ -329,6 +330,17 @@
                 type="text" 
                 id="messageInput" 
                 placeholder="输入消息..." 
+                onkeypress="handleKeyPress(event)"
+            >
+            <button id="sendButton" onclick="sendMessage()">发送</button>
+        </div>
+    </div>
+    
+    <script>
+        const chatArea = document.getElementById('chatArea');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const loading = document.getElementById('loading');
         const roleSelector = document.getElementById('roleSelector');
         const roleBadge = document.getElementById('roleBadge');
         
@@ -377,17 +389,6 @@
                 alert('切换角色失败，请重试');
             }
         }
-                onkeypress="handleKeyPress(event)"
-            >
-            <button id="sendButton" onclick="sendMessage()">发送</button>
-        </div>
-    </div>
-    
-    <script>
-        const chatArea = document.getElementById('chatArea');
-        const messageInput = document.getElementById('messageInput');
-        const sendButton = document.getElementById('sendButton');
-        const loading = document.getElementById('loading');
         
         // 加载历史消息
         async function loadHistory() {
@@ -447,9 +448,8 @@
             // 显示加载状态
             sendButton.disabled = true;
             loading.classList.add('active');
-            和角色
-        window.onload = () => {
-            loadCurrentRole();
+            
+            try {
                 const response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: {
@@ -496,8 +496,9 @@
             }
         }
         
-        // 页面加载时加载历史
+        // 页面加载时加载历史和角色
         window.onload = () => {
+            loadCurrentRole();
             loadHistory();
             messageInput.focus();
         };

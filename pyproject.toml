@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "evolution"
 version = "0.1.0"
@@ -12,6 +16,11 @@ dependencies = [
     "flask>=3.0.0",
     "flask-cors>=4.0.0",
 ]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["evolution*"]
+exclude = ["tests*", "docs*", "data*", "logs*", "scripts*"]
 
 [project.optional-dependencies]
 mem0 = [

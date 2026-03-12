@@ -1,11 +1,14 @@
 """
 统一通知路由器 — 所有推送的唯一出口
 根据优先级自动路由到邮件 / Telegram / Notion
+
+v0.2.1: 增加重试机制、超时保护、发送结果统计。
 """
 
 import json
 import logging
 import smtplib
+import time
 from dataclasses import dataclass, field
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -15,6 +18,34 @@ from typing import Any, Dict, List, Optional
 import httpx
 
 logger = logging.getLogger("evolution.notification")
+
+# ── Retry Configuration ──────────────────────────
+MAX_RETRIES = 2
+RETRY_BASE_DELAY = 1.0  # seconds
+RETRY_MAX_DELAY = 4.0   # seconds
+
+
+def _retry_with_backoff(func, max_retries: int = MAX_RETRIES):
+    """Execute func with exponential backoff on transient failures."""
+    last_exc = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            return func()
+        except Exception as e:
+            last_exc = e
+            err_str = str(e).lower()
+            # Non-retryable errors
+            if any(kw in err_str for kw in ("unauthorized", "forbidden", "not found", "invalid")):
+                logger.warning(f"[Retry] Non-retryable error: {e}")
+                raise
+            
+            if attempt < max_retries:
+                delay = min(RETRY_BASE_DELAY * (2 ** (attempt - 1)), RETRY_MAX_DELAY)
+                logger.warning(f"[Retry] Attempt {attempt}/{max_retries} failed: {e}. Retrying in {delay:.1f}s...")
+                time.sleep(delay)
+    
+    logger.error(f"[Retry] All {max_retries} retries exhausted: {last_exc}")
+    raise last_exc
 
 
 class NotifyPriority(Enum):
@@ -113,7 +144,7 @@ class TelegramChannel(BaseChannel):
         self.api_url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
 
     def send(self, notification: Notification) -> bool:
-        try:
+        def _do_send():
             text = f"*{notification.title}*\n\n{notification.body}"
             resp = httpx.post(
                 self.api_url,
@@ -124,14 +155,16 @@ class TelegramChannel(BaseChannel):
                 },
                 timeout=10,
             )
-            if resp.status_code == 200:
-                logger.info(f"[Telegram] Sent: {notification.title}")
-                return True
-            else:
-                logger.error(f"[Telegram] Failed: {resp.text}")
-                return False
+            if resp.status_code != 200:
+                raise Exception(f"HTTP {resp.status_code}: {resp.text[:100]}")
+            return True
+        
+        try:
+            _retry_with_backoff(_do_send)
+            logger.info(f"[Telegram] Sent: {notification.title}")
+            return True
         except Exception as e:
-            logger.error(f"[Telegram] Failed: {e}")
+            logger.error(f"[Telegram] Failed after retries: {e}")
             return False
 
 
@@ -163,11 +196,12 @@ class NotionChannel(BaseChannel):
                 f"[Notion] No database configured for category: {notification.category}"
             )
             return False
-        try:
+
+        def _do_send():
             payload = {
                 "parent": {"database_id": db_id},
                 "properties": {
-                    "Name": {
+                    "Title": {
                         "title": [{"text": {"content": notification.title[:100]}}]
                     },
                 },
@@ -183,10 +217,10 @@ class NotionChannel(BaseChannel):
                     }
                 ],
             }
-            # Add date property if available
-            date_val = notification.metadata.get("date")
-            if date_val:
-                payload["properties"]["Date"] = {"date": {"start": date_val}}
+            if notification.category:
+                payload["properties"]["Tags"] = {
+                    "multi_select": [{"name": notification.category}]
+                }
 
             resp = httpx.post(
                 "https://api.notion.com/v1/pages",
@@ -194,14 +228,16 @@ class NotionChannel(BaseChannel):
                 json=payload,
                 timeout=15,
             )
-            if resp.status_code == 200:
-                logger.info(f"[Notion] Created page: {notification.title}")
-                return True
-            else:
-                logger.error(f"[Notion] Failed: {resp.text[:200]}")
-                return False
+            if resp.status_code != 200:
+                raise Exception(f"HTTP {resp.status_code}: {resp.text[:200]}")
+            return True
+
+        try:
+            _retry_with_backoff(_do_send)
+            logger.info(f"[Notion] Created page: {notification.title}")
+            return True
         except Exception as e:
-            logger.error(f"[Notion] Failed: {e}")
+            logger.error(f"[Notion] Failed after retries: {e}")
             return False
 
 

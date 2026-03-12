@@ -1,16 +1,21 @@
 """
 Evolution SQLite 数据库管理器
 管理日程、技能树、人物档案、训练记录、心智模型、每日反思等结构化数据。
+
+v0.2.1: 增强连接管理（健康检查、自动重连）、输入验证。
 """
 
 import atexit
 import json
+import logging
 import sqlite3
 import threading
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+logger = logging.getLogger("evolution.db")
 
 
 class DatabaseManager:
@@ -46,15 +51,38 @@ class DatabaseManager:
 
     @contextmanager
     def _get_conn(self):
-        """每线程一个连接"""
-        if not hasattr(self._local, "conn") or self._local.conn is None:
-            self._local.conn = sqlite3.connect(self.db_path)
+        """每线程一个连接，带健康检查和自动重连"""
+        conn = getattr(self._local, "conn", None)
+
+        # Health check: verify existing connection is still usable
+        if conn is not None:
+            try:
+                conn.execute("SELECT 1")
+            except (sqlite3.OperationalError, sqlite3.ProgrammingError):
+                logger.warning("[DB] Stale connection detected, reconnecting")
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+                conn = None
+                self._local.conn = None
+
+        if conn is None:
+            self._local.conn = sqlite3.connect(
+                self.db_path, timeout=30.0,
+            )
             self._local.conn.row_factory = sqlite3.Row
             self._local.conn.execute("PRAGMA journal_mode=WAL")
             self._local.conn.execute("PRAGMA foreign_keys=ON")
+            self._local.conn.execute("PRAGMA busy_timeout=5000")
+
         try:
             yield self._local.conn
             self._local.conn.commit()
+        except sqlite3.OperationalError as e:
+            logger.error(f"[DB] Operational error: {e}")
+            self._local.conn.rollback()
+            raise
         except Exception:
             self._local.conn.rollback()
             raise
