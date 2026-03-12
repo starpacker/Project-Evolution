@@ -1,12 +1,13 @@
-# Evolution v0.1.0 — 技术报告
+# Evolution v0.2.0 — 技术报告
 
-> **版本**: 0.1.0  
-> **最后更新**: 2026-03-11  
+> **版本**: 0.2.0  
+> **最后更新**: 2026-03-12  
 > **作者**: Evolution Team  
 > **LLM 后端**: `cds/Claude-4.6-opus` via OpenAI-compatible Gateway  
 > **部署状态**: ✅ 已部署运行  
 > **Web Chat**: http://10.128.250.187:5000  
-> **许可**: 内部使用  
+> **Dashboard**: http://10.128.250.187:5000/dashboard  
+> **许可**: 内部使用
 
 ---
 
@@ -1464,28 +1465,77 @@ ProjectEvolution/
 └── PLAN_v2.md                          — 项目计划文档
 ```
 
-### 10.2 代码统计4 | 2,872 | 54% |
-| 测试 (tests/) | 10 | 2,429 | 46% |
-| **合计** | **24** | **5,301** | 100% |
+### 10.2 代码统计
+
+**总览** (截至 2026-03-12):
+
+| 分类 | 文件数 | 代码行数 | 占比 |
+|------|--------|---------|------|
+| 源码 (evolution/) | 26 | 4,870 | 45% |
+| 测试 (tests/) | 29 | 5,971 | 55% |
+| **合计** | **55** | **10,841** | 100% |
 
 **源码按模块分布**:
 
 | 模块 | 行数 | 占比 | 说明 |
 |------|------|------|------|
-| 数据库层 (db/) | 516 | 18% | DatabaseManager，7 张表 CRUD |
-| 工具层 (tools/) | 1,202 | 42% | 4 个核心工具 + BaseTool 兼容层 |
-| Web Chat (chat/) | 260 | 9% | Flask 服务器 + 聊天界面 |
-| 配置层 (config/) | 404 | 14% | 设置 + Prompt 模板 |
-| 通知层 (notification/) | 259 | 9% | 3 通道路由器 |
-| 工具函数 (utils/) | 222 | 8| DatabaseManager，7 张表 CRUD |
-| 工具层 (tools/) | 1,202 | 46% | 4 个核心工具 + BaseTool 兼容层 |
-| 配置层 (config/) | 404 | 15% | 设置 + Prompt 模板 |
-| 通知层 (notification/) | 259 | 10% | 3 通道路由器 |
-| 工具函数 (utils/) | 222 | 9% | LLM 封装 + CowAgent 桥接 |
-| 其他 (__init__) | 9 | <1% | — |
+| Web Chat (chat/) | 1,187 | 24% | web_chat (628行) + telegram_bot (291行) + dashboard (268行) |
+| 工具层 (tools/) | 1,194 | 25% | 6个工具: db/memory/reflection/intelligence/intelligence_lite/base |
+| 数据库层 (db/) | 516 | 11% | DatabaseManager，7 张表 CRUD |
+| 配置层 (config/) | 525 | 11% | settings (280行) + prompts (245行) |
+| 工具函数 (utils/) | 725 | 15% | llm/tool_handler/tool_enhancer/bridge/mem0_patch/custom_embedding |
+| 通知层 (notification/) | 260 | 5% | 3 通道路由器 |
+| 其他 (__init__) | 12 | <1% | 包初始化文件 |
 
-### 10.3 依赖关系
-7 个):
+**测试代码分布**:
+
+| 测试类型 | 文件数 | 行数 | 说明 |
+|---------|--------|------|------|
+| 系统测试 | 5 | 1,795 | test_full_system (533) + test_system_comprehensive (462) + test_live_integration (528) + test_real_functionality (174) + auto_stress_test (272) |
+| 单元测试 | 10 | 2,274 | db_manager (438) + db_tool (285) + reflection (201) + notification (249) + memory (149) + intelligence (214) + bridge (106) + integration (156) + llm_tool_calling (318) + e2e (206) |
+| 压力测试 | 2 | 573 | stress_test_real (301) + auto_stress_test (272) |
+| 功能测试 | 8 | 1,126 | proactive_push (457) + fixes (206) + step_by_step (289) + mem0 (160) + notion (85) + embedding (27) + verify_reset (52) |
+| 测试配置 | 1 | 103 | conftest.py (共享 fixtures) |
+
+**脚本代码分布**:
+
+| 脚本类型 | 文件数 | 行数 | 说明 |
+|---------|--------|------|------|
+| Python 脚本 | 6 | 762 | validate_credentials (260) + show_logo (205) + test_telegram_config (131) + 定时任务脚本 (166) |
+| Shell 脚本 | 6 | 687 | health_check (193) + start_rsshub (149) + start_telegram_bot (120) + setup (108) + install_cron (82) + start_web_chat (35) |
+
+**前端代码**:
+
+| 文件 | 行数 | 说明 |
+|------|------|------|
+| dashboard.html | 591 | 数据管理仪表板 |
+| chat.html | 507 | Web 聊天界面 |
+| **合计** | **1,098** | 响应式设计，适配移动端 |
+
+**文档**:
+
+| 文档 | 行数 | 说明 |
+|------|------|------|
+| technical_report_CN.md | ~1,500 | 本技术报告 |
+| 其他文档 | ~2,000 | 测试报告、指南、状态文档等 |
+
+### 10.3 v0.2.0 新增功能
+
+相比 v0.1.0，本版本新增:
+
+| 功能模块 | 文件 | 说明 |
+|---------|------|------|
+| **Dashboard** | dashboard.py (268行) + dashboard.html (591行) | 数据可视化管理界面 |
+| **工具调用增强** | tool_handler.py (262行) + tool_enhancer.py (160行) | 参数验证、自动重试、使用指南 |
+| **Telegram Bot** | telegram_bot.py (291行) | 移动端即时通讯接入 |
+| **Intelligence Lite** | intelligence_lite.py (256行) | 轻量级情报收集 |
+| **Mem0 补丁** | mem0_patch.py (94行) | Mem0 兼容性修复 |
+| **自定义 Embedding** | custom_embedding.py (31行) | 向量化定制 |
+| **增强测试** | 新增 15+ 测试文件 | 覆盖率从 93% 提升到 98%+ |
+
+### 10.4 依赖关系
+
+**核心依赖** (7 个):
 
 | 包 | 版本 | 用途 |
 |----|------|------|
